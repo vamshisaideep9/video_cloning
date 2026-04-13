@@ -1,25 +1,29 @@
 from fastapi import FastAPI
-from app.core.config import settings
-from app.core.database import engine, Base 
-from app.api.router import api_router
-import app.models.video_task 
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
+from app.core.database import engine, Base
+from app.models.job import CloningJob
 
 
-# Create all tables in the postgres database
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables on startup (For production, use Alembic migrations instead)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
+
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="CPU-based asynchronous video cloning architecture"
+    title = "Video Cloning Core API",
+    version = "0.1.0",
 )
 
 
-app.include_router(api_router, prefix="/api/v1")
-
-@app.get("/")
-def health_check():
-    return {
-        "status": "healthy",
-        "project": settings.PROJECT_NAME,
-        "database": "connected"
-    }
+@app.get("/health", tags=["System"])
+async def health_check():
+    return JSONResponse(
+        status_code=200,
+        content={"status": "Operational", "environment": "cpu-bound"}
+    )

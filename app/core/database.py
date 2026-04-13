@@ -1,30 +1,32 @@
-# app/core/database.py
-
-"""
-Using SQLAlchemy to connect to postgres 
-
-"""
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
 
-# Create the SQLAlchemy engine using the secure URL
-engine = create_engine(settings.DATABASE_URL, echo=False)
+# Async engine optimized for high concurrency
+engine = create_async_engine(
+    settings.async_database_url,
+    echo=False,
+    pool_size=10,
+    max_overflow=20
+)
 
-# SessionLocal will be used to spawn database sessions for each API request
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# All your future database models will inherit from this Base
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
 Base = declarative_base()
 
-
-
-# Dependency injection function for FastAPI endpoints
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency injection for FastAPI route handlers."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()

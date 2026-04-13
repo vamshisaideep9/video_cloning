@@ -2,21 +2,19 @@ from celery import Celery
 from app.core.config import settings
 
 
-celery = Celery(
-    "video_worker",
+celery_app = Celery(
+    "video_clone_worker",
     broker=settings.REDIS_URL,
-    backend=settings.REDIS_URL,
-    includer=['app.worker.tasks']
+    backend=settings.REDIS_URL, 
+    include=["app.services.tasks"] 
 )
 
 
-celery.conf.update(
+celery_app.conf.update(
+    task_track_started=True,
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
     timezone="UTC",
-    enable_utc=True, 
+    enable_utc=True,
 )
-
-
-celery.autodiscover_tasks(["app.worker"])
