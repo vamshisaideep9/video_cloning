@@ -18,11 +18,33 @@ dependencies = [
     "librosa>=0.10.0",
     "soundfile>=0.12.0",
     "dagshub",
+    "huggingface-hub",
+    "python-multipart",
+    "opencv-python-headless",
+    "numpy<2.0.0",
+    "imageio",
+    "imageio-ffmpeg",
+    "librosa",
+    "scipy",
+    "pyyaml",
+    "insightface==0.7.3"
 ]
 
 
-[tool.uv]
-extra-index-url = ["https://download.pytorch.org/whl/cpu"]
+# [tool.uv]
+# extra-index-url = ["https://download.pytorch.org/whl/cpu"]
 
 [project.optional-dependencies]
 ml = ["torch==2.2.0+cpu", "torchaudio==2.2.0+cpu", "torchvision==0.17.0+cpu"]
+
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }

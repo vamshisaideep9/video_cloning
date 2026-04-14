@@ -6,6 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsm6 \
     libxext6 \
+    libgl1 \
+    libglib2.0-0 \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # install uv
@@ -23,14 +27,14 @@ RUN uv pip install --system --no-cache -r pyproject.toml --extra ml
 # stage 2: Runtime environment
 FROM python:3.11-slim
 
-
-# Re-install runtime system dependencies (ffmpeg is required for video processing)
+# Re-install modern runtime system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsm6 \
     libxext6 \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
-
 
 WORKDIR /app
 

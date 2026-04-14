@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.core.database import engine, Base
 from app.models.job import CloningJob
+from app.core.config import settings
+from app.api.v1.endpoints import clone
 
 
 
@@ -16,10 +18,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title = "Video Cloning Core API",
+    title = settings.PROJECT_NAME,
     version = "0.1.0",
+    lifespan = lifespan
 )
 
+
+app.include_router(clone.router, prefix=settings.API_V1_STR, tags=["cloning"])
 
 @app.get("/health", tags=["System"])
 async def health_check():
