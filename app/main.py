@@ -10,7 +10,6 @@ from app.api.v1.endpoints import clone
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup (For production, use Alembic migrations instead)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

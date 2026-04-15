@@ -14,7 +14,7 @@ class F5TTSEngine:
         """Singleton pattern: memory space created, but model NOT loaded yet."""
         if cls._instance is None:
             cls._instance = super(F5TTSEngine, cls).__new__(cls)
-            cls._instance.session = None # Initialize as empty
+            cls._instance.session = None
         return cls._instance
 
     def _initialize_model(self):
@@ -22,15 +22,13 @@ class F5TTSEngine:
         self.model_dir = "/app/models/f5_tts"
         os.makedirs(self.model_dir, exist_ok=True)
         
-        # CRITICAL: This filename must match exactly what you downloaded locally!
-        # If your local script downloaded "model.onnx", change this string to "model.onnx"
         self.model_path = os.path.join(self.model_dir, "F5_Transformer.onnx") 
         
         if not os.path.exists(self.model_path):
             logger.info("ONNX weights not found locally. Fallback downloading...")
             try:
                 self.model_path = hf_hub_download(
-                    repo_id="huggingfacess/F5-TTS-ONNX", # Reverted to standard repo
+                    repo_id="huggingfacess/F5-TTS-ONNX", 
                     filename="F5_Transformer.onnx", 
                     local_dir=self.model_dir,
                     token=os.environ.get("HF_TOKEN")
@@ -57,7 +55,6 @@ class F5TTSEngine:
             self.session = None
 
     def clone_voice(self, reference_audio_path: str, target_text: str, output_path: str) -> str:
-        # LAZY LOAD: Only initialize the model the first time this function is called
         if self.session is None:
             self._initialize_model()
             

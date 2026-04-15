@@ -41,6 +41,7 @@ def process_video_clone(self, job_id: int, source_image_path: str, target_voice_
 
         logger.info(f"Job {job_id}: Sanitizing audio format for Wav2Lip...")
         clean_audio = os.path.join(settings.OUTPUT_DIR, f"{job_id}_clean_vox.wav")
+        
         # Force re-encode to 16kHz WAV (Wav2Lip's native requirement)
         subprocess.run([
             "ffmpeg", "-y", "-i", temp_audio, 
@@ -53,13 +54,17 @@ def process_video_clone(self, job_id: int, source_image_path: str, target_voice_
         vendor_script = "/app/app/vendor/Wav2Lip/inference.py"
         checkpoint_path = "/app/models/wav2lip/wav2lip_gan.pth"
         
+        # We will save the raw wav2lip output to a temp file first
+        raw_video_path = os.path.join(settings.OUTPUT_DIR, f"{job_id}_raw.mp4")
+        
         cmd = [
             "python", vendor_script,
             "--checkpoint_path", checkpoint_path,
             "--face", source_image_path,
             "--audio", clean_audio, 
-            "--outfile", final_video_path,
-            "--pads", "0", "20", "0", "0",
+            "--outfile", raw_video_path,
+            # UPGRADE 1: Increased bottom padding from 20 to 30 to give the chin room to open
+            "--pads", "0", "30", "0", "0",
             "--wav2lip_batch_size", "8",  
             "--face_det_batch_size", "2"
         ]
@@ -70,7 +75,17 @@ def process_video_clone(self, job_id: int, source_image_path: str, target_voice_
         if result.returncode != 0:
             logger.error(f"Wav2Lip Failed:\n{result.stderr}")
             raise RuntimeError("Wav2Lip inference failed.")
-        
+            
+        # --- UPGRADE 3: FFmpeg CPU Upscaler ---
+        logger.info(f"Job {job_id}: Step 2.5 - Upscaling video to 720p HD...")
+        subprocess.run([
+            "ffmpeg", "-y", "-i", raw_video_path,
+            "-vf", "scale=-1:720:flags=lanczos", 
+            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+            "-c:a", "copy",
+            final_video_path
+        ], check=True, capture_output=True)
+
         logger.info(f"Job {job_id}: Step 3 - Pipeline Completed Successfully.")
 
         job.status = "COMPLETED"
