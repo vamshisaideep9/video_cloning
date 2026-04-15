@@ -9,7 +9,6 @@ from app.core.config import settings
 
 #ML ENGINE
 from app.services.f5_tts_engine import f5_tts_engine
-from app.services.live_portrait_engine import live_portrait_engine
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +39,14 @@ def process_video_clone(self, job_id: int, source_image_path: str, target_voice_
 
         f5_tts_engine.unload_model() 
 
+        logger.info(f"Job {job_id}: Sanitizing audio format for Wav2Lip...")
+        clean_audio = os.path.join(settings.OUTPUT_DIR, f"{job_id}_clean_vox.wav")
+        # Force re-encode to 16kHz WAV (Wav2Lip's native requirement)
+        subprocess.run([
+            "ffmpeg", "-y", "-i", temp_audio, 
+            "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", clean_audio
+        ], check=True, capture_output=True)
+
         # --- STAGE 2: WAV2LIP SUBPROCESS ---
         logger.info(f"Job {job_id}: Step 2 - Executing Wav2Lip Lip-Sync...")
         
@@ -50,9 +57,11 @@ def process_video_clone(self, job_id: int, source_image_path: str, target_voice_
             "python", vendor_script,
             "--checkpoint_path", checkpoint_path,
             "--face", source_image_path,
-            "--audio", temp_audio,
+            "--audio", clean_audio, 
             "--outfile", final_video_path,
-            "--pads", "0", "20", "0", "0" # standard padding to prevent chin clipping
+            "--pads", "0", "20", "0", "0",
+            "--wav2lip_batch_size", "8",  
+            "--face_det_batch_size", "2"
         ]
         
         logger.info(f"Running Wav2Lip: {' '.join(cmd)}")

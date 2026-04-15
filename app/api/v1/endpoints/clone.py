@@ -2,6 +2,7 @@ import os
 import uuid
 import shutil
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.job import CloningJob
@@ -45,3 +46,28 @@ async def create_cloning_job(
     process_video_clone.delay(new_job.id, image_path, voice_path)
 
     return {"job_id": new_job.id, "status": "PENDING"}
+
+
+
+@router.get("/download/{filename}")
+async def download_video(filename: str):
+    """
+    Fetches the generated .mp4 file from the server's output directory.
+    """
+    # Security: Use os.path.basename to prevent Directory Traversal attacks (e.g., passing "../../../etc/passwd")
+    safe_filename = os.path.basename(filename)
+    file_path = os.path.join(settings.OUTPUT_DIR, safe_filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=404, 
+            detail="Video not found. It may still be processing or the job ID is invalid."
+        )
+        
+    return FileResponse(
+        path=file_path, 
+        media_type='video/mp4', 
+        filename=safe_filename,
+        # This header forces the browser to download the file rather than just playing it
+        headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
+    )
